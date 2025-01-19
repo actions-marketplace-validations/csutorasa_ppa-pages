@@ -1,0 +1,140 @@
+name: PPA Pages
+description: Personal Package Archives for Ubuntu on Github Pages
+
+inputs:
+  actor:
+    description: Github username to use for commit-and-push, defaults to ${{ github.actor }}
+    required: false
+  actor_id:
+    description: Github user ID to use for commit-and-push, defaults to ${{ github.actor_id }}
+    required: false
+  base-dir:
+    description: Path to the directory, where the PPA should be set up
+    required: true
+  commit-and-push:
+    description: Use 'true' if the changed code should be commited and pushed, write permissions are needed for this
+    required: true
+    default: 'true'
+  list-name:
+    description: Name of the .list file, preferably a unique name
+    required: true
+  private-key:
+    description: GPG private key to sign the files with
+    required: true
+  repository-owner:
+    description: Github repository owner to use for the .list file, defaults to ${{ github.repository_owner }}
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install GNUPG
+      shell: bash
+      run: |
+        sudo apt-get install -y gnupg
+
+    - name: Import GPG private key
+      shell: bash
+      env:
+        PRIVATE_KEY: ${{ inputs.private-key }}
+      run: |
+        echo "$PRIVATE_KEY" | gpg --import
+        echo "Private key is imported"
+
+    - name: Check KEY.gpg
+      id: key-check
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      run: |
+        if [ -f KEY.gpg ]; then
+          echo "${{ inputs.base-dir }}/KEY.gpg is found, skipping generation"
+          echo "missing=false" >> "$GITHUB_OUTPUT"
+        else 
+          echo "${{ inputs.base-dir }}/KEY.gpg is not found"
+          echo "missing=true" >> "$GITHUB_OUTPUT"
+        fi
+    
+    - name: Generate KEY.gpg
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      if: steps.key-check.outputs.missing == 'true'
+      run: |
+        gpg --armor --export > "KEY.gpg"
+        echo "${{ inputs.base-dir }}/KEY.gpg is generated"
+
+    - name: Check .list
+      id: list-check
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      run: |
+        if [ -f "${{ inputs.list-name }}.list" ]; then
+          echo "${{ inputs.base-dir }}/${{ inputs.list-name }}.list is found, skipping generation"
+          echo "missing=false" >> "$GITHUB_OUTPUT"
+        else 
+          echo "${{ inputs.base-dir }}/${{ inputs.list-name }}.list is not found"
+          echo "missing=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Create .list
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      if: steps.list-check.outputs.missing == 'true'
+      run: |
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/${{ inputs.list-name }}.gpg] https://${{ inputs.repository-owner || github.repository_owner }}.github.io/${{ inputs.base-dir }} ./" > "${{ inputs.list-name }}.list"
+        echo "${{ inputs.base-dir }}/${{ inputs.list-name }}.list is generated"
+
+    - name: Generate Pagackes
+      id: generate-packages
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      run: |
+        dpkg-scanpackages --multiversion . > Packages
+        if git --no-pager diff --name-status | grep -q "Packages"; then
+          echo "${{ inputs.base-dir }}/Packages file has changed"
+          gzip -k -f Packages
+          echo "${{ inputs.base-dir }}/Packages.gz is created"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "${{ inputs.base-dir }}/Packages file has not changed, skipping update"
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        fi
+    
+    - name: Generate Release
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      if: steps.generate-packages.outputs.changed == 'true'
+      run: |
+        apt-ftparchive release . > Release
+        echo "${{ inputs.base-dir }}/Release is generated"
+    
+    - name: Signing Release
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      if: steps.generate-packages.outputs.changed == 'true'
+      run: |
+        gpg -abs -o - Release > Release.gpg
+        gpg --clearsign -o - Release > InRelease
+        echo "Release is signed"
+
+    - name: Commit and push
+      shell: bash
+      working-directory: ${{ inputs.base-dir }}
+      if: inputs.commit-and-push && (steps.key-check.outputs.missing == 'true' || steps.list-check.outputs.missing == 'true' || steps.generate-packages.outputs.changed == 'true')
+      run: |
+        git config user.name "${{ inputs.actor || github.actor }}"
+        git config user.email "${{ inputs.actor-id || github.actor_id }}+${{ inputs.actor || github.actor }}@users.noreply.github.com"
+        git add .
+        git commit -m "Update PPA"
+        git push
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo '# Add the PPA
+        
+        ```shell
+        curl -s --compressed "https://${{ inputs.repository-owner || github.repository_owner }}.github.io/${{ inputs.base-dir }}/KEY.gpg" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/${{ inputs.list-name }}.gpg >/dev/null
+        sudo curl -s --compressed -o /etc/apt/sources.list.d/${{ inputs.list-name }}.list "https://${{ inputs.repository-owner || github.repository_owner }}.github.io/${{ inputs.base-dir }}/${{ inputs.list-name }}.list"
+        sudo apt update
+        ```
+        ' >> $GITHUB_STEP_SUMMARY
