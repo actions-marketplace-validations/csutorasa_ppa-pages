@@ -24,7 +24,35 @@ This action can be used in Github Pages, to [maintain an Ubuntu PPA](https://hel
 | private-key      | GPG private key to sign the files with                | true     |
 | repository-owner | Github repository owner to use for the .list file     | true     |
 
+## Outputs
+
+There are no outputs.
+
 ## Example workflow
+
+```yml
+name: Build PPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package:
+    name: Update PPA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Generate PPA
+        uses: csutorasa/ppa-pages@main
+        with:
+          base-dir: ppa
+          list-name: my_ppa
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          repository-owner: ${{ github.repository_owner }}
+```
+
+## Example workflow with commit and push
 
 ```yml
 name: Build PPA
@@ -41,7 +69,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Update PPA
+      - name: Generate and update PPA
         uses: csutorasa/ppa-pages@main
         with:
           actor: ${{ github.actor }}
