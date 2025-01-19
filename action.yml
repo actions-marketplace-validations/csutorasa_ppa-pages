@@ -134,3 +134,7 @@ runs:
         sudo apt update
         ```
         ' >> $GITHUB_STEP_SUMMARY
+
+branding:
+  icon: 'package'
+  color: 'orange'
