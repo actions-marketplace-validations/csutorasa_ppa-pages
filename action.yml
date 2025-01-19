@@ -5,7 +5,7 @@ inputs:
   actor:
     description: Github username to use for commit-and-push 
     required: false
-  actor_id:
+  actor-id:
     description: Github user ID to use for commit-and-push
     required: false
   base-dir:

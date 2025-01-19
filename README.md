@@ -18,7 +18,7 @@ This action can be used in Github Pages, to [maintain an Ubuntu PPA](https://hel
 | Input            | Description                                           | Required |
 | ---------------- | ----------------------------------------------------- | -------- |
 | actor            | Github username to use for commit-and-push            | false    |
-| actor_id         | Github user ID to use for commit-and-push             | false    |
+| actor-id         | Github user ID to use for commit-and-push             | false    |
 | base-dir         | Path to the directory, where the PPA should be set up | true     |
 | list-name        | Name of the .list file, preferably a unique name      | true     |
 | private-key      | GPG private key to sign the files with                | true     |
