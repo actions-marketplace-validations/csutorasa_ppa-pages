@@ -3,18 +3,14 @@ description: Personal Package Archives for Ubuntu on Github Pages
 
 inputs:
   actor:
-    description: Github username to use for commit-and-push, defaults to ${{ github.actor }}
+    description: Github username to use for commit-and-push 
     required: false
   actor_id:
-    description: Github user ID to use for commit-and-push, defaults to ${{ github.actor_id }}
+    description: Github user ID to use for commit-and-push
     required: false
   base-dir:
     description: Path to the directory, where the PPA should be set up
     required: true
-  commit-and-push:
-    description: Use 'true' if the changed code should be commited and pushed, write permissions are needed for this
-    required: true
-    default: 'true'
   list-name:
     description: Name of the .list file, preferably a unique name
     required: true
@@ -22,8 +18,8 @@ inputs:
     description: GPG private key to sign the files with
     required: true
   repository-owner:
-    description: Github repository owner to use for the .list file, defaults to ${{ github.repository_owner }}
-    required: false
+    description: Github repository owner to use for the .list file
+    required: true
 
 runs:
   using: "composite"
@@ -80,7 +76,7 @@ runs:
       working-directory: ${{ inputs.base-dir }}
       if: steps.list-check.outputs.missing == 'true'
       run: |
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/${{ inputs.list-name }}.gpg] https://${{ inputs.repository-owner || github.repository_owner }}.github.io/${{ inputs.base-dir }} ./" > "${{ inputs.list-name }}.list"
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/${{ inputs.list-name }}.gpg] https://${{ inputs.repository-owner }}.github.io/${{ inputs.base-dir }} ./" > "${{ inputs.list-name }}.list"
         echo "${{ inputs.base-dir }}/${{ inputs.list-name }}.list is generated"
 
     - name: Generate Pagackes
@@ -119,10 +115,10 @@ runs:
     - name: Commit and push
       shell: bash
       working-directory: ${{ inputs.base-dir }}
-      if: inputs.commit-and-push && (steps.key-check.outputs.missing == 'true' || steps.list-check.outputs.missing == 'true' || steps.generate-packages.outputs.changed == 'true')
+      if: inputs.actor && inputs.actor-id && (steps.key-check.outputs.missing == 'true' || steps.list-check.outputs.missing == 'true' || steps.generate-packages.outputs.changed == 'true')
       run: |
-        git config user.name "${{ inputs.actor || github.actor }}"
-        git config user.email "${{ inputs.actor-id || github.actor_id }}+${{ inputs.actor || github.actor }}@users.noreply.github.com"
+        git config user.name "${{ inputs.actor }}"
+        git config user.email "${{ inputs.actor-id }}+${{ inputs.actor }}@users.noreply.github.com"
         git add .
         git commit -m "Update PPA"
         git push
@@ -133,8 +129,8 @@ runs:
         echo '# Add the PPA
         
         ```shell
-        curl -s --compressed "https://${{ inputs.repository-owner || github.repository_owner }}.github.io/${{ inputs.base-dir }}/KEY.gpg" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/${{ inputs.list-name }}.gpg >/dev/null
-        sudo curl -s --compressed -o /etc/apt/sources.list.d/${{ inputs.list-name }}.list "https://${{ inputs.repository-owner || github.repository_owner }}.github.io/${{ inputs.base-dir }}/${{ inputs.list-name }}.list"
+        curl -s --compressed "https://${{ inputs.repository-owner }}.github.io/${{ inputs.base-dir }}/KEY.gpg" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/${{ inputs.list-name }}.gpg >/dev/null
+        sudo curl -s --compressed -o /etc/apt/sources.list.d/${{ inputs.list-name }}.list "https://${{ inputs.repository-owner }}.github.io/${{ inputs.base-dir }}/${{ inputs.list-name }}.list"
         sudo apt update
         ```
         ' >> $GITHUB_STEP_SUMMARY

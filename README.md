@@ -2,7 +2,7 @@
 
 [Personal Package Archives](https://launchpad.net/ubuntu/+ppas) for [Ubuntu](https://ubuntu.com/) on [Github Pages](https://pages.github.com/).
 
-This action can be used in Github Pages, to maintain an Ubuntu PPA.
+This action can be used in Github Pages, to [maintain an Ubuntu PPA](https://help.ubuntu.com/community/CreateAuthenticatedRepository).
 
 ## How to use
 
@@ -15,15 +15,14 @@ This action can be used in Github Pages, to maintain an Ubuntu PPA.
 
 ## Inputs
 
-| Input            | Description                                           | Required | Default                        |
-| ---------------- | ----------------------------------------------------- | -------- | ------------------------------ |
-| actor            | Github username to use for commit-and-push            | false    | ${{ github.actor }}            |
-| actor_id         | Github user ID to use for commit-and-push             | false    | ${{ github.actor_id }}         |
-| base-dir         | Path to the directory, where the PPA should be set up | true     |                                |
-| commit-and-push  | If the changed code should be commited and pushed     | false    | 'true'                         |
-| list-name        | Name of the .list file, preferably a unique name      | true     |                                |
-| private-key      | GPG private key to sign the files with                | true     |                                |
-| repository-owner | Github repository owner to use for the .list file     | false    | ${{ github.repository_owner }} |
+| Input            | Description                                           | Required |
+| ---------------- | ----------------------------------------------------- | -------- |
+| actor            | Github username to use for commit-and-push            | false    |
+| actor_id         | Github user ID to use for commit-and-push             | false    |
+| base-dir         | Path to the directory, where the PPA should be set up | true     |
+| list-name        | Name of the .list file, preferably a unique name      | true     |
+| private-key      | GPG private key to sign the files with                | true     |
+| repository-owner | Github repository owner to use for the .list file     | true     |
 
 ## Example workflow
 
@@ -45,7 +44,10 @@ jobs:
       - name: Update PPA
         uses: csutorasa/ppa-pages@main
         with:
+          actor: ${{ github.actor }}
+          actor-id: ${{ github.actor_id }}
           base-dir: ppa
           list-name: my_ppa
           private-key: ${{ secrets.PRIVATE_KEY }}
+          repository-owner: ${{ github.repository_owner }}
 ```
